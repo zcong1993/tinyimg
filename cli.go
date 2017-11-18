@@ -28,9 +28,12 @@ const (
 // GitCommit is cli current git commit hash
 var GitCommit string
 
+// WorkerLog is msg struct for worker
 type WorkerLog struct {
+	// IsError is msg type
 	IsError bool
-	Msg     string
+	// Msg is log msg
+	Msg string
 }
 
 // CLI is the command line object
