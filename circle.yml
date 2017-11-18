@@ -22,11 +22,11 @@ jobs:
               make build
   deploy:
     steps:
-      -run:
-        name: deployment
-        commands: |
-          go get github.com/tcnksm/ghr
-          ghr -t $GITHUB_TOKEN -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace `git describe --tags` bin/
+      - run:
+          name: deployment
+          commands: |
+            go get github.com/tcnksm/ghr
+            ghr -t $GITHUB_TOKEN -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace `git describe --tags` bin/
 
 workflows:
   version: 2
