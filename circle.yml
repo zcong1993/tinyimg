@@ -21,6 +21,11 @@ jobs:
             chmod +x ./build.sh
             make build
   deploy:
+    docker:
+      # CircleCI Go images available at: https://hub.docker.com/r/circleci/golang/
+      - image: circleci/golang:1.9
+
+    working_directory: /go/src/github.com/zcong1993/tinyimg
     steps:
       - run:
           name: deployment
