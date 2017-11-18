@@ -1,28 +1,36 @@
 version: 2
 jobs:
-  build:
-    docker:
-      # CircleCI Go images available at: https://hub.docker.com/r/circleci/golang/
-      - image: circleci/golang:1.9
+  - build:
+      docker:
+        # CircleCI Go images available at: https://hub.docker.com/r/circleci/golang/
+        - image: circleci/golang:1.9
 
-    working_directory: /go/src/github.com/zcong1993/tinyimg
+      working_directory: /go/src/github.com/zcong1993/tinyimg
 
-    steps:
-      - checkout
-      - run:
-          name: get deps
-          command: |
-            go get -u -v github.com/golang/dep/cmd/dep
-            dep ensure
-            go get -u -v github.com/mitchellh/gox
-      - run:
-          name: build
-          command: |
-            chmod +x ./build.sh
-            make build
-  deployment:
-    release:
-      branch: master
-      commands: |
-        go get github.com/tcnksm/ghr
-        ghr -t $GITHUB_TOKEN -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace `git describe --tags` bin/
+      steps:
+        - checkout
+        - run:
+            name: get deps
+            command: |
+              go get -u -v github.com/golang/dep/cmd/dep
+              dep ensure
+              go get -u -v github.com/mitchellh/gox
+        - run:
+            name: build
+            command: |
+              chmod +x ./build.sh
+              make build
+    - deploy:
+        requires:
+          - build
+        filters:
+          tags:
+            only: /^v/
+          branches:
+            only: master
+        steps:
+          -run:
+            name: deployment
+            commands: |
+              go get github.com/tcnksm/ghr
+              ghr -t $GITHUB_TOKEN -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace `git describe --tags` bin/
