@@ -5,19 +5,7 @@
 
 > image compress cli
 
-## Performance
-
-### source
-
-![2.7MB](https://raw.githubusercontent.com/zcong1993/tinyimg/master/assets/source.jpg)
-
-2.7MB
-
-### tiny
-
-![646kB](https://raw.githubusercontent.com/zcong1993/tinyimg/master/assets/tiny-85.jpg)
-
-646kB in 85 quantity
+## [Performance](https://github.com/zcong1993/tinyimg/wiki/Performance)
 
 ## Install
 
