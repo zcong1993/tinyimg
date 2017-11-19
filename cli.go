@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/apex/log"
 	"github.com/discordapp/lilliput"
 	"io"
 	"io/ioutil"
@@ -16,7 +17,7 @@ const (
 	// Name is cli name
 	Name = "tinyimg"
 	// Version is cli current version
-	Version = "v0.0.1"
+	Version = "v0.0.2"
 	// ExitCodeOK is exit code 0
 	ExitCodeOK = 0
 	// ExitCodeError is exit code 1
@@ -34,6 +35,10 @@ type WorkerLog struct {
 	IsError bool
 	// Msg is log msg
 	Msg string
+	// Input is handle filename
+	Input string
+	// Output is output filename
+	Output string
 }
 
 // CLI is the command line object
@@ -81,7 +86,7 @@ func (cli *CLI) Run(args []string) int {
 	}
 
 	if quantity < 0 || quantity > 100 {
-		fmt.Fprint(cli.errStream, "Invalid argument: quantity should in 0 - 100")
+		LogError("Invalid argument: quantity should in 0 - 100")
 		return ExitCodeError
 	}
 
@@ -89,7 +94,7 @@ func (cli *CLI) Run(args []string) int {
 		if _, err := os.Stat(outdir); os.IsNotExist(err) {
 			err := os.Mkdir(outdir, 0700)
 			if err != nil {
-				fmt.Fprint(cli.errStream, fmt.Sprintf("create dir error %s\n", err.Error()))
+				LogError(fmt.Sprintf("create dir error %s\n", err.Error()))
 				return ExitCodeError
 			}
 		}
@@ -97,7 +102,7 @@ func (cli *CLI) Run(args []string) int {
 
 	parsedArgs := flags.Args()
 	if len(parsedArgs) < 1 {
-		fmt.Fprint(cli.errStream, "Invalid argument: you should provide at least 1 input file")
+		LogError("Invalid argument: you should provide at least 1 input file")
 		return ExitCodeError
 	}
 	files := parsedArgs
@@ -106,12 +111,21 @@ func (cli *CLI) Run(args []string) int {
 	for _, file := range files {
 		go handler(file, quantity, outdir, ch)
 	}
+
 	for i := 0; i < len(files); i++ {
 		out := <-ch
 		if out.IsError {
-			fmt.Fprint(cli.errStream, out.Msg)
+			errLogger := CreateLogger(log.Fields{
+				"file": out.Input,
+				"msg":  out.Msg,
+			})
+			errLogger.Error("failed")
 		} else {
-			fmt.Fprint(cli.outStream, out.Msg)
+			LogSuccess(log.Fields{
+				"file":     out.Input,
+				"output":   out.Output,
+				"quantity": quantity,
+			})
 		}
 	}
 	return ExitCodeOK
@@ -120,18 +134,18 @@ func (cli *CLI) Run(args []string) int {
 func handler(file string, quantity int, outdir string, ch chan<- WorkerLog) {
 	inputBuf, err := ioutil.ReadFile(file)
 	if err != nil {
-		ch <- WorkerLog{true, err.Error()}
+		ch <- WorkerLog{true, err.Error(), file, ""}
 		return
 	}
 	decoder, err := lilliput.NewDecoder(inputBuf)
 	if err != nil {
-		ch <- WorkerLog{true, fmt.Sprintf("error decoding image, %s\n", err)}
+		ch <- WorkerLog{true, fmt.Sprintf("error decoding image, %s\n", err), file, ""}
 		return
 	}
 	defer decoder.Close()
 	header, err := decoder.Header()
 	if err != nil {
-		ch <- WorkerLog{true, fmt.Sprintf("error reading image header, %s\n", err)}
+		ch <- WorkerLog{true, fmt.Sprintf("error reading image header, %s\n", err), file, ""}
 		return
 	}
 	ops := lilliput.NewImageOps(8192)
@@ -152,21 +166,21 @@ func handler(file string, quantity int, outdir string, ch chan<- WorkerLog) {
 	}
 	outputImg, err = ops.Transform(decoder, opts, outputImg)
 	if err != nil {
-		ch <- WorkerLog{true, fmt.Sprintf("error transforming image, %s\n", err)}
+		ch <- WorkerLog{true, fmt.Sprintf("error transforming image, %s\n", err), file, ""}
 		return
 	}
 	outputFilename := filepath.Join(outdir, fmt.Sprintf("tiny-%d-%s", quantity, file))
 	if _, err := os.Stat(outputFilename); !os.IsNotExist(err) {
-		ch <- WorkerLog{true, fmt.Sprintf("output filename %s exists, not replace it\n", outputFilename)}
+		ch <- WorkerLog{true, fmt.Sprintf("output filename %s exists, not replace it\n", outputFilename), file, ""}
 		return
 	}
 	err = ioutil.WriteFile(outputFilename, outputImg, 0400)
 	if err != nil {
-		ch <- WorkerLog{true, fmt.Sprintf("error writing out resized image, %s\n", err)}
+		ch <- WorkerLog{true, fmt.Sprintf("error writing out resized image, %s\n", err), file, ""}
 		return
 	}
 
-	ch <- WorkerLog{false, fmt.Sprintf("image written to %s\n", outputFilename)}
+	ch <- WorkerLog{false, fmt.Sprintf("image written to %s\n", outputFilename), file, outputFilename}
 }
 
 func createOpts(quantity int) map[string]map[int]int {

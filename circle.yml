@@ -38,7 +38,9 @@ workflows:
   build-n-deploy:
     jobs:
       - build:
-
+          filters:
+            branches:
+              only: /.*/
       - deploy:
           requires:
             - build
